@@ -71,6 +71,12 @@ cpu_family = '$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/${ndk_triple%%-*}'
 cpu = '${CC%%-*}'
 endian = 'little'
 CROSSFILE
+
+  if [ -n "$ndk_triple" ]; then
+  	export PKG_CONFIG_SYSROOT_DIR="$crossfile_dir"
+  	export PKG_CONFIG_LIBDIR="$PKG_CONFIG_SYSROOT_DIR/usr/local/lib/pkgconfig"
+  	unset PKG_CONFIG_PATH
+  fi
 }
 
 build_dav1d() {
@@ -97,6 +103,60 @@ build_dav1d() {
 
   ninja -C "$build" -j"$cores"
   DESTDIR="$prefix_dir" ninja -C "$build" install
+}
+
+build_lua() {
+  if [ -z "$NDK" ]
+  then
+        echo "\$NDK is not set"
+        exit 1
+  fi
+
+  setup "$1"
+
+  mkdir -p "$SCRIPT_DIR"/build
+  [ ! -d "$SCRIPT_DIR"/build/lua ] && cp -r "$SCRIPT_DIR"/lua "$SCRIPT_DIR"/build/lua
+  cd "$SCRIPT_DIR"/build/lua || exit
+
+  sed -i "/^CFLAGS=/c\CFLAGS= -Wall -O2 \$(MYCFLAGS) -fno-stack-protector -fno-common" makefile
+
+  prefix_dir="$(pwd)/../../prefix/$prefix_name/usr/local"
+
+  make CC="$CC -Dgetlocaledecpoint\(\)=\(\'.\'\)" \
+  	AR="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/$ndk_triple-ar rs" RANLIB="true" \
+  	PLAT=linux LUA_T= LUAC_T= -j"$cores"
+
+  make INSTALL="${INSTALL:-install}" INSTALL_TOP="$prefix_dir" TO_BIN=/dev/null install || exit 1
+
+  mkdir -p "$prefix_dir"/lib/pkgconfig
+  make pc > "$prefix_dir"/lib/pkgconfig/lua.pc
+  cat >>"$prefix_dir"/lib/pkgconfig/lua.pc <<'EOF'
+Name: Lua
+Description:
+Version: ${version}
+Libs: -L${libdir} -llua
+Cflags: -I${includedir}
+EOF
+}
+
+build_mbedtls() {
+  if [ -z "$NDK" ]
+  then
+        echo "\$NDK is not set"
+        exit 1
+  fi
+
+  setup "$1"
+
+  mkdir -p "$SCRIPT_DIR"/build
+  [ ! -d "$SCRIPT_DIR"/build/mbedtls ] && cp -r "$SCRIPT_DIR"/mbedtls "$SCRIPT_DIR"/build/mbedtls
+  cd "$SCRIPT_DIR"/build/mbedtls || exit
+
+  prefix_dir="$(pwd)/../../prefix/$prefix_name/usr/local"
+
+  export AR="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/$ndk_triple-ar"
+  make -j"$cores" no_test
+  make DESTDIR="$prefix_dir" install
 }
 
 build_ffmpeg() {
@@ -155,6 +215,7 @@ build_mpv() {
 
   PKG_CONFIG="pkg-config --static" \
   ./waf configure \
+    --disable-wayland \
   	--disable-iconv --lua=52 \
   	--enable-libmpv-shared \
   	--disable-manpage-build \
@@ -175,9 +236,11 @@ case "$1" in
     clean
     ;;
   build)
-    build_dav1d "arm64" || exit 1
-    build_ffmpeg "arm64" || exit 1
-    build_mpv "arm64" || exit 1
+    build_lua "arm64" || exit 1
+#    build_dav1d "arm64" || exit 1
+#    build_mbedtls "arm64" || exit 1
+#    build_ffmpeg "arm64" || exit 1
+#    build_mpv "arm64" || exit 1
     # build_mpv "x86"
     # build_mpv "x86_64"
     ;;
