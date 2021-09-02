@@ -39,6 +39,7 @@ setup() {
 
   export CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/$cc_triple-clang"
   export CXX="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/$cc_triple-clang++"
+  export STRIP="$NDK/toolchains/llvm/prebuilt/linux-x86_64/$ndk_triple/bin/strip"
 
   ndk_suffix="_$1"
 
@@ -339,6 +340,13 @@ usage() {
   exit 0
 }
 
+strip_all () {
+  setup "$1"
+  cd "$SCRIPT_DIR"/prefix/"$1" || exit
+  find usr/local/bin -type f ! -name '*.pc' ! -name '*.la' ! -name '*.cmake' ! -name '*.sh' -exec "$STRIP" {} +
+  find usr/local/lib -type f ! -name '*.pc' ! -name '*.la' ! -name '*.cmake' ! -name '*.sh' -exec "$STRIP" {} +
+}
+
 case "$1" in
   clean)
     clean
@@ -355,6 +363,7 @@ case "$1" in
     build_mpv "arm64" || exit 1
     # build_mpv "x86"
     # build_mpv "x86_64"
+    strip_all "arm64" || exit 1
     ;;
   *)
     usage
