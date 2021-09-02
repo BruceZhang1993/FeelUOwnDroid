@@ -105,7 +105,7 @@ build_dav1d() {
   DESTDIR="$prefix_dir" ninja -C "$build" install
 }
 
-build_lua() {
+build_fribidi() {
   if [ -z "$NDK" ]
   then
         echo "\$NDK is not set"
@@ -115,16 +115,124 @@ build_lua() {
   setup "$1"
 
   mkdir -p "$SCRIPT_DIR"/build
-  [ ! -d "$SCRIPT_DIR"/build/lua ] && cp -r "$SCRIPT_DIR"/lua "$SCRIPT_DIR"/build/lua
-  cd "$SCRIPT_DIR"/build/lua || exit
+  [ ! -d "$SCRIPT_DIR"/build/fribidi ] && cp -r "$SCRIPT_DIR"/fribidi "$SCRIPT_DIR"/build/fribidi
+  cd "$SCRIPT_DIR"/build/fribidi || exit
 
-  sed -i "/^CFLAGS=/c\CFLAGS= -Wall -O2 \$(MYCFLAGS) -fno-stack-protector -fno-common" makefile
+  prefix_dir="$(pwd)/../../prefix/$prefix_name"
+  build=_build$ndk_suffix
+
+  unset CC CXX
+
+  meson "$build" --cross-file "$prefix_dir"/crossfile.txt \
+  	-D{tests,docs}=false
+
+  ninja -C "$build" -j"$cores"
+  DESTDIR="$prefix_dir" ninja -C "$build" install
+}
+
+build_harfbuzz() {
+  if [ -z "$NDK" ]
+  then
+        echo "\$NDK is not set"
+        exit 1
+  fi
+
+  setup "$1"
+
+  mkdir -p "$SCRIPT_DIR"/build
+  [ ! -d "$SCRIPT_DIR"/build/harfbuzz ] && cp -r "$SCRIPT_DIR"/harfbuzz "$SCRIPT_DIR"/build/harfbuzz
+  cd "$SCRIPT_DIR"/build/harfbuzz || exit
+
+  prefix_dir="$(pwd)/../../prefix/$prefix_name"
+  build=_build$ndk_suffix
+
+  unset CC CXX
+
+  meson "$build" --cross-file "$prefix_dir"/crossfile.txt \
+  	-Dtests=disabled
+
+  ninja -C "$build" -j"$cores"
+  DESTDIR="$prefix_dir" ninja -C "$build" install
+}
+
+build_freetype2() {
+  if [ -z "$NDK" ]
+  then
+        echo "\$NDK is not set"
+        exit 1
+  fi
+
+  setup "$1"
+
+  mkdir -p "$SCRIPT_DIR"/build
+  [ ! -d "$SCRIPT_DIR"/build/freetype2 ] && cp -r "$SCRIPT_DIR"/freetype2 "$SCRIPT_DIR"/build/freetype2
+  cd "$SCRIPT_DIR"/build/freetype2 || exit
+
+  prefix_dir="$(pwd)/../../prefix/$prefix_name"
+  build=_build$ndk_suffix
+
+  unset CC CXX
+  meson "$build" --cross-file "$prefix_dir/crossfile.txt"
+  ninja -C "$build" -j"$cores"
+  DESTDIR="$prefix_dir" ninja -C "$build" install
+}
+
+build_libass() {
+  if [ -z "$NDK" ]
+  then
+        echo "\$NDK is not set"
+        exit 1
+  fi
+
+  setup "$1"
+
+  mkdir -p "$SCRIPT_DIR"/build
+  [ ! -d "$SCRIPT_DIR"/build/libass ] && cp -r "$SCRIPT_DIR"/libass "$SCRIPT_DIR"/build/libass
+  cd "$SCRIPT_DIR"/build/libass || exit
+
+  prefix_dir="$(pwd)/../../prefix/$prefix_name"
+
+  extra=
+  [[ "$ndk_triple" == "i686"* ]] && extra="--disable-asm"
+
+  [ -f configure ] || ./autogen.sh
+
+  mkdir -p "_build$ndk_suffix"
+  cd "_build$ndk_suffix" || exit
+
+  ../configure \
+    --host=$ndk_triple $extra \
+    --enable-static --disable-shared \
+    --disable-require-system-font-provider
+
+  make -j"$cores"
+  make DESTDIR="$prefix_dir" install
+}
+
+build_lua() {
+  lua_version="5.2.4"
+
+  if [ -z "$NDK" ]
+  then
+        echo "\$NDK is not set"
+        exit 1
+  fi
+
+  setup "$1"
+
+  mkdir -p "$SCRIPT_DIR"/build
+  cd "$SCRIPT_DIR"/build || exit
+
+  mkdir -p "$SCRIPT_DIR/../.cache"
+  [ ! -d "$SCRIPT_DIR/../.cache/lua-$lua_version.tar.gz" ] && wget "http://www.lua.org/ftp/lua-$lua_version.tar.gz" -O "$SCRIPT_DIR/../.cache/lua-$lua_version.tar.gz"
+  tar xvfz "$SCRIPT_DIR/../.cache/lua-$lua_version.tar.gz"
+  cd "lua-$lua_version" || exit
 
   prefix_dir="$(pwd)/../../prefix/$prefix_name/usr/local"
 
   make CC="$CC -Dgetlocaledecpoint\(\)=\(\'.\'\)" \
   	AR="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/$ndk_triple-ar rs" RANLIB="true" \
-  	PLAT=linux LUA_T= LUAC_T= -j"$cores"
+  	PLAT=linux LUA_T= LUAC_T= -j"$cores" INSTALL_TOP="$prefix_dir" TO_BIN=/dev/null
 
   make INSTALL="${INSTALL:-install}" INSTALL_TOP="$prefix_dir" TO_BIN=/dev/null install || exit 1
 
@@ -222,7 +330,7 @@ build_mpv() {
   	-o "$(pwd)/_build$ndk_suffix"
 
   ./waf build -j"$cores"
-  ./waf install --destdir="$(pwd)/../prefix/$prefix_name"
+  ./waf install --destdir="$(pwd)/../../prefix/$prefix_name"
 }
 
 usage() {
@@ -236,11 +344,15 @@ case "$1" in
     clean
     ;;
   build)
+    build_fribidi "arm64" || exit 1
+    build_freetype2 "arm64" || exit 1
+    build_harfbuzz "arm64" || exit 1
+    build_libass "arm64" || exit 1
     build_lua "arm64" || exit 1
-#    build_dav1d "arm64" || exit 1
-#    build_mbedtls "arm64" || exit 1
-#    build_ffmpeg "arm64" || exit 1
-#    build_mpv "arm64" || exit 1
+    build_dav1d "arm64" || exit 1
+    build_mbedtls "arm64" || exit 1
+    build_ffmpeg "arm64" || exit 1
+    build_mpv "arm64" || exit 1
     # build_mpv "x86"
     # build_mpv "x86_64"
     ;;

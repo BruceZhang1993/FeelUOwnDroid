@@ -10,3 +10,4 @@
 local.properties
 /third_party/build
 /third_party/prefix
+/.cache
