@@ -21,8 +21,10 @@ class FuoService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startPython()
-        task = executor.submit { start() }
+        task = executor.submit {
+            startPython()
+            start()
+        }
         Toast.makeText(this, "FeelUOwn running in background", Toast.LENGTH_SHORT).show()
         return super.onStartCommand(intent, flags, startId)
     }
@@ -48,6 +50,7 @@ class FuoService : Service() {
         super.onDestroy()
         try {
             task.cancel(true)
+            Toast.makeText(this, "Stopping FeelUOwn service", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Log.e(TAG, "onDestroy: ", e)
         }

@@ -22,13 +22,18 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val serviceIntent = Intent(this, FuoService::class.java)
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         setSupportActionBar(binding.appBarMain.toolbar)
 
         binding.appBarMain.fab.setOnClickListener {
-            startService(Intent(this, FuoService::class.java))
+            startService(serviceIntent)
+        }
+        binding.appBarMain.fab2.setOnClickListener {
+            stopService(serviceIntent)
         }
         val drawerLayout: DrawerLayout = binding.drawerLayout
         val navView: NavigationView = binding.navView
