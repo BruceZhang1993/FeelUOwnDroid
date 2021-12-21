@@ -16,7 +16,7 @@ android {
         versionName "1.0"
 
         ndk {
-            abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+            abiFilters "armeabi-v7a", "arm64-v8a"
         }
 
         python {
@@ -25,6 +25,8 @@ android {
                 options "--extra-index-url", "https://chaquo.com/pypi-7.0"
                 install "git+https://github.com/feeluown/FeelUOwn.git#egg=feeluown[battery]"
             }
+
+            buildPython "/usr/bin/python"
         }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
