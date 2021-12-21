@@ -4,18 +4,26 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
+import android.widget.Toast
 import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 class FuoService : Service() {
     companion object {
+        private val executor: ExecutorService = Executors.newSingleThreadExecutor()
+        const val TAG = "FuoService"
         lateinit var pythonInstance: Python
+        lateinit var task: Future<*>
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startPython()
-        start()
+        task = executor.submit { start() }
+        Toast.makeText(this, "FeelUOwn running in background", Toast.LENGTH_SHORT).show()
         return super.onStartCommand(intent, flags, startId)
     }
 
@@ -34,5 +42,14 @@ class FuoService : Service() {
         pythonInstance.getModule("sys")["argv"]?.asList()?.add(PyObject.fromJava("-nw"))
         pythonInstance.getModule("sys")["argv"]?.asList()?.add(PyObject.fromJava("-d"))
         pythonInstance.getModule("feeluown.__main__").callAttr("main")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            task.cancel(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "onDestroy: ", e)
+        }
     }
 }
