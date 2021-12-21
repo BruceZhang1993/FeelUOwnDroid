@@ -2,7 +2,10 @@ package io.github.feeluown.feeluownx
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Looper
+import android.util.Log
 import android.view.Menu
+import android.widget.Toast
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.navigation.NavigationView
 import androidx.navigation.findNavController
@@ -15,6 +18,10 @@ import androidx.appcompat.app.AppCompatActivity
 import io.github.feeluown.feeluownx.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        const val TAG = "MainActivity"
+    }
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
@@ -33,7 +40,12 @@ class MainActivity : AppCompatActivity() {
             startService(serviceIntent)
         }
         binding.appBarMain.fab2.setOnClickListener {
-            stopService(serviceIntent)
+            // stopService(serviceIntent)
+            FuoClient.instance.runCheckConnection {
+                Looper.prepare()
+                Toast.makeText(this, "Result: $it", Toast.LENGTH_SHORT).show()
+                Looper.loop()
+            }
         }
         val drawerLayout: DrawerLayout = binding.drawerLayout
         val navView: NavigationView = binding.navView
