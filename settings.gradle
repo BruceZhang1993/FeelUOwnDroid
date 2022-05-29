@@ -1,2 +1,8 @@
+pluginManagement {
+    repositories {
+        maven { url "https://chaquo.com/maven" }
+    }
+}
+
 rootProject.name = "FeelUOwn X"
 include ':app'
